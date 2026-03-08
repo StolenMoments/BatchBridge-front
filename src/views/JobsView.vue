@@ -41,12 +41,38 @@
         <td><span :class="`status ${job.status}`">{{ job.status }}</span></td>
         <td>{{ formatDate(job.submittedAt) }}</td>
         <td>
+          <button @click="viewResult(job.jobId)" class="btn">👁 View</button>
           <button @click="downloadResult(job.jobId)" class="btn">↓ Result</button>
           <button @click="deleteJob(job.jobId)" class="btn danger">Delete</button>
         </td>
       </tr>
       </tbody>
     </table>
+
+    <div v-if="isResultModalOpen" class="modal-overlay" @click.self="closeResultModal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Result Preview ({{ activeResultJobId }})</h3>
+          <button class="btn-close" @click="closeResultModal">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <p v-if="!resultRows.length" class="empty-result">No data in result file.</p>
+          <table v-else class="result-table">
+            <thead>
+            <tr>
+              <th v-for="(header, index) in resultHeaders" :key="`header-${index}`">{{ header }}</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="(row, rowIndex) in resultRows" :key="`row-${rowIndex}`">
+              <td v-for="(value, colIndex) in row" :key="`cell-${rowIndex}-${colIndex}`">{{ value }}</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
     <div class="pagination">
       <button :disabled="pagination.page === 0" @click="setPage(pagination.page - 1)">← Prev</button>
@@ -57,7 +83,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useJobs } from '@/composables/useJobs'
 import { useNotifications } from '@/composables/useNotifications'
 import api from '@/api'
@@ -65,6 +91,11 @@ import api from '@/api'
 const { sortedJobs, filters, pagination, loading, fetchJobs, setFilter, setPage } = useJobs()
 
 const { addNotification } = useNotifications()
+
+const isResultModalOpen = ref(false)
+const activeResultJobId = ref('')
+const resultHeaders = ref([])
+const resultRows = ref([])
 
 const formatDate = (iso) => new Date(iso).toLocaleString('ko-KR')
 
@@ -96,6 +127,63 @@ const downloadResult = async (jobId) => {
   }
 }
 
+const parseCsvLine = (line) => {
+  const values = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i]
+    const nextChar = line[i + 1]
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"'
+        i += 1
+      } else {
+        inQuotes = !inQuotes
+      }
+      continue
+    }
+
+    if (char === ',' && !inQuotes) {
+      values.push(current)
+      current = ''
+      continue
+    }
+
+    current += char
+  }
+
+  values.push(current)
+  return values
+}
+
+const viewResult = async (jobId) => {
+  try {
+    const response = await api.get(`/results/${jobId}`, { responseType: 'text' })
+    const csvText = String(response.data || '').trim()
+    const lines = csvText ? csvText.split(/\r?\n/) : []
+
+    if (!lines.length) {
+      resultHeaders.value = []
+      resultRows.value = []
+    } else {
+      resultHeaders.value = parseCsvLine(lines[0])
+      resultRows.value = lines.slice(1).map(parseCsvLine)
+    }
+
+    activeResultJobId.value = jobId
+    isResultModalOpen.value = true
+  } catch (err) {
+    addNotification(err.response?.data?.error?.message || 'Failed to load result preview', 'error')
+  }
+}
+
+const closeResultModal = () => {
+  isResultModalOpen.value = false
+}
+
 const deleteJob = async (jobId) => {
   if (!confirm('Delete this job?')) return
   try {
@@ -120,4 +208,59 @@ onMounted(() => fetchJobs())
 .btn { padding: 6px 12px; margin-right: 6px; border: none; border-radius: 6px; cursor: pointer; }
 .btn-refresh { background: #0056b3; color: white; }
 .pagination { margin-top: 16px; display: flex; gap: 12px; align-items: center; }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.modal {
+  width: min(1000px, 92vw);
+  max-height: 80vh;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+}
+.btn-close {
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.modal-body {
+  max-height: calc(80vh - 60px);
+  overflow: auto;
+  padding: 12px 16px 16px;
+}
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.result-table th,
+.result-table td {
+  border: 1px solid #eee;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.result-table th {
+  background: #f7f8fa;
+  position: sticky;
+  top: 0;
+}
+.empty-result {
+  margin: 0;
+  color: #666;
+}
 </style>
