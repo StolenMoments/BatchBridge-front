@@ -17,7 +17,7 @@
         <option value="partial">Partial</option>
       </select>
 
-      <button @click="fetchJobs" class="btn-refresh">↻ Refresh</button>
+      <button @click="refreshJobs" class="btn-refresh">↻ Refresh</button>
     </div>
 
     <table class="jobs-table">
@@ -67,6 +67,16 @@ const { sortedJobs, filters, pagination, loading, fetchJobs, setFilter, setPage 
 const { addNotification } = useNotifications()
 
 const formatDate = (iso) => new Date(iso).toLocaleString('ko-KR')
+
+const refreshJobs = async () => {
+  try {
+    await api.post('/batches/refresh')
+    await fetchJobs()
+    addNotification('Batches refreshed successfully', 'success')
+  } catch (err) {
+    addNotification(err.response?.data?.error?.message || 'Failed to refresh batches', 'error')
+  }
+}
 
 const downloadResult = async (jobId) => {
   try {
