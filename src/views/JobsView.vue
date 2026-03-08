@@ -127,18 +127,30 @@ const downloadResult = async (jobId) => {
   }
 }
 
-const parseCsvLine = (line) => {
-  const values = []
-  let current = ''
+const parseCsv = (csvText) => {
+  const rows = []
+  let currentRow = []
+  let currentValue = ''
   let inQuotes = false
 
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i]
-    const nextChar = line[i + 1]
+  const pushValue = () => {
+    currentRow.push(currentValue)
+    currentValue = ''
+  }
+
+  const pushRow = () => {
+    pushValue()
+    rows.push(currentRow)
+    currentRow = []
+  }
+
+  for (let i = 0; i < csvText.length; i += 1) {
+    const char = csvText[i]
+    const nextChar = csvText[i + 1]
 
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
-        current += '"'
+        currentValue += '"'
         i += 1
       } else {
         inQuotes = !inQuotes
@@ -147,30 +159,41 @@ const parseCsvLine = (line) => {
     }
 
     if (char === ',' && !inQuotes) {
-      values.push(current)
-      current = ''
+      pushValue()
       continue
     }
 
-    current += char
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i += 1
+      }
+      pushRow()
+      continue
+    }
+
+    currentValue += char
   }
 
-  values.push(current)
-  return values
+  const hasRemainingData = currentValue.length > 0 || currentRow.length > 0
+  if (hasRemainingData) {
+    pushRow()
+  }
+
+  return rows
 }
 
 const viewResult = async (jobId) => {
   try {
     const response = await api.get(`/results/${jobId}`, { responseType: 'text' })
-    const csvText = String(response.data || '').trim()
-    const lines = csvText ? csvText.split(/\r?\n/) : []
+    const csvText = String(response.data || '')
+    const parsedRows = parseCsv(csvText).filter((row) => row.length > 1 || row[0] !== '')
 
-    if (!lines.length) {
+    if (!parsedRows.length) {
       resultHeaders.value = []
       resultRows.value = []
     } else {
-      resultHeaders.value = parseCsvLine(lines[0])
-      resultRows.value = lines.slice(1).map(parseCsvLine)
+      resultHeaders.value = parsedRows[0]
+      resultRows.value = parsedRows.slice(1)
     }
 
     activeResultJobId.value = jobId
