@@ -62,6 +62,7 @@
       <!-- Column Description -->
       <div class="column-desc">
         <h3>컬럼 설명</h3>
+        <div class="table-scroll-wrapper">
         <table class="desc-table">
           <thead>
           <tr>
@@ -80,6 +81,7 @@
           </tr>
           </tbody>
         </table>
+      </div>
       </div>
     </div>
     <!-- End File Format Examples -->
@@ -120,6 +122,7 @@
     <!-- Preview Section -->
     <div v-if="previewData" class="preview-section">
       <h2>Preview (First 5 Rows)</h2>
+      <div class="table-scroll-wrapper">
       <table class="preview-table">
         <thead>
         <tr>
@@ -132,6 +135,7 @@
         </tr>
         </tbody>
       </table>
+      </div>
 
       <div class="stats">
         <p>Total Rows: {{ previewData.totalRows }}</p>
@@ -268,7 +272,14 @@ const submitBatch = async () => {
 </script>
 
 <style scoped>
-.upload-page { padding: 24px; max-width: 1100px; }
+.upload-page { padding: 24px; max-width: 1100px; width: 100%; box-sizing: border-box; }
+
+
+.table-scroll-wrapper {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
 
 /* ── File format info ── */
 .file-format-info {
@@ -401,7 +412,7 @@ const submitBatch = async () => {
 
 /* Column description table */
 .column-desc h3 { font-size: 0.95rem; margin: 0 0 12px; color: #333; }
-.desc-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+.desc-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 0.87rem; }
 .desc-table th {
   text-align: left;
   padding: 9px 14px;
@@ -447,7 +458,7 @@ const submitBatch = async () => {
 }
 
 /* ── Preview section ── */
-.preview-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+.preview-table { width: 100%; min-width: 640px; border-collapse: collapse; margin-bottom: 24px; }
 .preview-table th, .preview-table td { padding: 12px; border: 1px solid #eee; }
 .stats { margin-bottom: 24px; }
 </style>
