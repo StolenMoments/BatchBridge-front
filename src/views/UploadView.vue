@@ -96,8 +96,11 @@
           :class="{ 'drag-over': dragOver }"
       >
         <input type="file" ref="fileInput" @change="onFileChange" hidden accept=".xlsx,.ods,.csv,.jsonl" />
-        <p v-if="!selectedFile">Drag & drop file here or <button @click="triggerFileInput">browse</button></p>
-        <p v-else>{{ selectedFile.name }} selected</p>
+        <p v-if="!selectedFile">Drag & drop file here or <button type="button" @click="triggerFileInput">browse</button></p>
+        <div v-else class="selected-file-row">
+          <p>{{ selectedFile.name }} selected</p>
+          <button type="button" class="btn-remove-file" @click="removeSelectedFile">Remove file</button>
+        </div>
       </div>
 
       <!-- Form Fields -->
@@ -222,6 +225,12 @@ const onDrop = (e) => {
 const onFileChange = (e) => {
   const file = e.target.files[0]
   if (file && validateFileType(file)) selectedFile.value = file
+}
+
+const removeSelectedFile = () => {
+  selectedFile.value = null
+  previewData.value = null
+  if (fileInput.value) fileInput.value.value = ''
 }
 
 const validateFileType = (file) => {
@@ -441,6 +450,32 @@ const submitBatch = async () => {
   margin-bottom: 24px;
 }
 .drag-over { border-color: #007bff; background: #e7f3ff; }
+.selected-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selected-file-row p {
+  margin: 0;
+}
+
+.btn-remove-file {
+  background: #f5f7fa;
+  color: #555;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.btn-remove-file:hover {
+  border-color: #cc0000;
+  color: #cc0000;
+}
+
 .form-fields { display: grid; gap: 16px; margin-bottom: 24px; }
 .form-fields label { font-weight: bold; }
 .form-fields select, .form-fields textarea {
