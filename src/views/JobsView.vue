@@ -10,7 +10,7 @@
 
       <select v-model="filters.status" @change="setFilter('status', filters.status)">
         <option value="">All Status</option>
-        <option value="queued">Queued</option>
+        <option value="Pending">Pending</option>
         <option value="running">Running</option>
         <option value="completed">Completed</option>
         <option value="failed">Failed</option>
