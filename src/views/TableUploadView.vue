@@ -60,15 +60,49 @@
         </table>
       </div>
 
-      <button class="btn-submit" :disabled="submitting" @click="submitTableUpload">
-        {{ submitting ? 'Submitting...' : 'Submit Table Upload' }}
+      <button class="btn-submit" :disabled="loading" @click="uploadTableForPreview">
+        {{ loading ? 'Uploading...' : 'Upload Table (Preview)' }}
       </button>
+
+      <div v-if="previewData" class="preview-section">
+        <h2>Preview</h2>
+
+        <div class="table-scroll-wrapper">
+          <table class="preview-table">
+            <thead>
+            <tr>
+              <th v-for="col in previewData.columns" :key="col">{{ col }}</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="(row, idx) in previewData.preview" :key="idx">
+              <td v-for="col in previewData.columns" :key="col">{{ row[col] || '-' }}</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="preview-meta">
+          <p>Total Rows: {{ previewData.totalRows }}</p>
+          <p>
+            Estimated Tokens:
+            Claude {{ previewData.estimatedTokens.claude }},
+            Gemini {{ previewData.estimatedTokens.gemini }},
+            Grok {{ previewData.estimatedTokens.grok }}
+          </p>
+          <p>Estimated Cost: ${{ previewData.estimatedCost.total.toFixed(3) }}</p>
+        </div>
+
+        <button class="btn-submit" :disabled="submitting" @click="submitBatch">
+          {{ submitting ? 'Submitting...' : 'Submit Batch' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api'
 import { useNotifications } from '@/composables/useNotifications'
@@ -79,7 +113,9 @@ const router = useRouter()
 const filename = ref('batch-table-input.csv')
 const defaultModel = ref('claude')
 const systemPrompt = ref('')
+const loading = ref(false)
 const submitting = ref(false)
+const previewData = ref(null)
 
 const createEmptyRow = () => ({
   id: '',
@@ -91,6 +127,10 @@ const createEmptyRow = () => ({
 })
 
 const rows = ref([createEmptyRow()])
+
+watch([rows, filename], () => {
+  previewData.value = null
+}, { deep: true })
 
 const addRow = () => {
   rows.value.push(createEmptyRow())
@@ -113,7 +153,26 @@ const buildRowsPayload = () => rows.value
       return payloadRow
     })
 
-const submitTableUpload = async () => {
+const buildCsvContent = (payloadRows) => {
+  const columns = ['id', 'prompt', 'model', 'system_prompt', 'temperature', 'max_tokens']
+  const escapeCsv = (value) => {
+    if (value === undefined || value === null) return ''
+    const text = String(value)
+    if (text.includes('"') || text.includes(',') || text.includes('\n')) {
+      return `"${text.replace(/"/g, '""')}"`
+    }
+    return text
+  }
+
+  const header = columns.join(',')
+  const body = payloadRows
+      .map((row) => columns.map((column) => escapeCsv(row[column])).join(','))
+      .join('\n')
+
+  return `${header}\n${body}`
+}
+
+const uploadTableForPreview = async () => {
   const payloadRows = buildRowsPayload()
 
   if (!filename.value.trim()) {
@@ -126,19 +185,44 @@ const submitTableUpload = async () => {
     return
   }
 
-  submitting.value = true
+  loading.value = true
   try {
-    const { data } = await api.post('/batch/upload/table', {
-      filename: filename.value.trim(),
-      systemPrompt: systemPrompt.value,
-      defaultModel: defaultModel.value,
-      rows: payloadRows
+    const csvContent = buildCsvContent(payloadRows)
+    const file = new File([csvContent], filename.value.trim(), { type: 'text/csv' })
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('defaultModel', defaultModel.value)
+    formData.append('systemPrompt', systemPrompt.value)
+
+    const { data } = await api.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    addNotification(data?.message || 'Table upload submitted successfully', 'success')
-    router.push('/jobs')
+    previewData.value = data.data
+    addNotification('Table uploaded successfully!', 'success')
   } catch (err) {
     addNotification(err.response?.data?.error?.message || 'Table upload failed', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+const submitBatch = async () => {
+  if (!previewData.value?.uploadId) return
+
+  submitting.value = true
+  try {
+    const { data } = await api.post('/batches', {
+      uploadId: previewData.value.uploadId,
+      defaultModel: defaultModel.value,
+      systemPrompt: systemPrompt.value
+    })
+
+    addNotification(`Batch submitted! Job ID: ${data.data.jobId}`, 'success')
+    router.push('/jobs')
+  } catch (err) {
+    addNotification(err.response?.data?.error?.message || 'Submission failed', 'error')
   } finally {
     submitting.value = false
   }
@@ -194,5 +278,26 @@ const submitTableUpload = async () => {
   border-radius: 6px;
   padding: 12px 24px;
   cursor: pointer;
+}
+
+.preview-section {
+  margin-top: 28px;
+}
+
+.preview-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+.preview-table th,
+.preview-table td {
+  padding: 12px;
+  border: 1px solid #eee;
+}
+
+.preview-meta {
+  margin: 8px 0 10px;
 }
 </style>
