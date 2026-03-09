@@ -53,7 +53,10 @@
       <div class="modal">
         <div class="modal-header">
           <h3>Result Preview ({{ activeResultJobId }})</h3>
-          <button class="btn-close" @click="closeResultModal">✕</button>
+          <div class="modal-actions">
+            <button class="btn-copy" @click="copyResultColumn" :disabled="!canCopyResultColumn">📋 결과 복사</button>
+            <button class="btn-close" @click="closeResultModal">✕</button>
+          </div>
         </div>
 
         <div class="modal-body">
@@ -83,7 +86,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useJobs } from '@/composables/useJobs'
 import { useNotifications } from '@/composables/useNotifications'
 import api from '@/api'
@@ -96,6 +99,9 @@ const isResultModalOpen = ref(false)
 const activeResultJobId = ref('')
 const resultHeaders = ref([])
 const resultRows = ref([])
+
+const resultColumnIndex = computed(() => resultHeaders.value.findIndex((header) => String(header).trim().toLowerCase() === 'result'))
+const canCopyResultColumn = computed(() => resultColumnIndex.value !== -1 && resultRows.value.length > 0)
 
 const formatDate = (iso) => new Date(iso).toLocaleString('ko-KR')
 
@@ -207,6 +213,47 @@ const closeResultModal = () => {
   isResultModalOpen.value = false
 }
 
+const copyTextToClipboard = async (text) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  textarea.remove()
+}
+
+const copyResultColumn = async () => {
+  if (!canCopyResultColumn.value) {
+    addNotification('복사할 result 컬럼 데이터가 없습니다.', 'error')
+    return
+  }
+
+  const values = resultRows.value
+    .map((row) => row[resultColumnIndex.value])
+    .filter((value) => value !== undefined && value !== null && String(value).trim() !== '')
+    .map((value) => String(value))
+
+  if (!values.length) {
+    addNotification('복사할 result 컬럼 데이터가 없습니다.', 'error')
+    return
+  }
+
+  try {
+    await copyTextToClipboard(values.join('\n'))
+    addNotification(`result 컬럼 ${values.length}개를 클립보드에 복사했습니다.`, 'success')
+  } catch {
+    addNotification('클립보드 복사에 실패했습니다.', 'error')
+  }
+}
+
 const deleteJob = async (jobId) => {
   if (!confirm('Delete this job?')) return
   try {
@@ -254,6 +301,22 @@ onMounted(() => fetchJobs())
   align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid #eee;
+}
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-copy {
+  border: 1px solid #d9dce2;
+  background: #f7f8fa;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.btn-copy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .btn-close {
   border: none;
