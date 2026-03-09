@@ -117,8 +117,10 @@ const loading = ref(false)
 const submitting = ref(false)
 const previewData = ref(null)
 
-const createEmptyRow = () => ({
-  id: '',
+const formatRowId = (rowNumber) => `row_${String(rowNumber).padStart(3, '0')}`
+
+const createEmptyRow = (rowNumber) => ({
+  id: formatRowId(rowNumber),
   prompt: '',
   model: '',
   system_prompt: '',
@@ -126,14 +128,14 @@ const createEmptyRow = () => ({
   max_tokens: ''
 })
 
-const rows = ref([createEmptyRow()])
+const rows = ref([createEmptyRow(1)])
 
 watch([rows, filename], () => {
   previewData.value = null
 }, { deep: true })
 
 const addRow = () => {
-  rows.value.push(createEmptyRow())
+  rows.value.push(createEmptyRow(rows.value.length + 1))
 }
 
 const removeRow = (index) => {
