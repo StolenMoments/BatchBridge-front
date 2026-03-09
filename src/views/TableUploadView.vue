@@ -128,7 +128,7 @@ const submitTableUpload = async () => {
 
   submitting.value = true
   try {
-    const { data } = await api.post('/batch/upload/tables', {
+    const { data } = await api.post('/batch/upload/table', {
       filename: filename.value.trim(),
       systemPrompt: systemPrompt.value,
       defaultModel: defaultModel.value,
