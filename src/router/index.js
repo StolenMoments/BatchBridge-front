@@ -9,6 +9,7 @@ const routes = [
     children: [
       { path: '/jobs', name: 'jobs', component: () => import('@/views/JobsView.vue') },
       { path: '/upload', name: 'upload', component: () => import('@/views/UploadView.vue') },
+      { path: '/upload-table', name: 'upload-table', component: () => import('@/views/TableUploadView.vue') },
       { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') }
     ]
   }
