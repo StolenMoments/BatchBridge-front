@@ -4,6 +4,7 @@
     <nav>
       <RouterLink to="/jobs" class="nav-link">Jobs</RouterLink>
       <RouterLink to="/upload" class="nav-link">Upload</RouterLink>
+      <RouterLink to="/upload-table" class="nav-link">Table Upload</RouterLink>
       <RouterLink to="/settings" class="nav-link">Settings</RouterLink>
     </nav>
   </header>
