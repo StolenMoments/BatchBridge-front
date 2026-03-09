@@ -3,7 +3,6 @@
     <RouterLink to="/jobs" class="sidebar-link">📋 Batch List</RouterLink>
     <RouterLink to="/upload" class="sidebar-link">⬆️ New Upload</RouterLink>
     <RouterLink to="/upload-table" class="sidebar-link">🧾 Table Upload</RouterLink>
-    <RouterLink to="/settings" class="sidebar-link">⚙️ API Keys</RouterLink>
   </aside>
 </template>
 
