@@ -245,7 +245,7 @@ onMounted(() => fetchJobs())
   max-height: 80vh;
   background: white;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: auto;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 .modal-header {
@@ -262,8 +262,7 @@ onMounted(() => fetchJobs())
   cursor: pointer;
 }
 .modal-body {
-  max-height: calc(80vh - 60px);
-  overflow: auto;
+  overflow: visible;
   padding: 12px 16px 16px;
 }
 .result-table {
@@ -276,6 +275,8 @@ onMounted(() => fetchJobs())
   padding: 8px;
   text-align: left;
   vertical-align: top;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .result-table th {
   background: #f7f8fa;
